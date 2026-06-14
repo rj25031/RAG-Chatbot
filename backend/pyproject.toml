@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-chatbot-backend"
+version = "0.1.0"
+description = "FastAPI backend for folder-aware RAG chatbot"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.14.0",
+  "fastapi>=0.115.0",
+  "groq>=0.13.0",
+  "langgraph>=0.2.60",
+  "langchain-core>=0.3.20",
+  "pgvector>=0.3.6",
+  "psycopg[binary]>=3.2.0",
+  "pydantic-settings>=2.6.0",
+  "pymupdf>=1.24.0",
+  "python-multipart>=0.0.12",
+  "sentence-transformers>=3.3.0",
+  "sqlalchemy>=2.0.36",
+  "uvicorn[standard]>=0.32.0",
+]
+
+[tool.poetry]
+package-mode = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]

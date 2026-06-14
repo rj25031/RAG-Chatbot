@@ -1,0 +1,17 @@
+node_modules
+.next
+.vscode
+.DS_Store
+tsconfig.tsbuildinfo
+dist
+build
+.venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.env
+.env.local
+uploads/*
+!uploads/.gitkeep
+backend/alembic.ini
