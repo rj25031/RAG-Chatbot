@@ -15,10 +15,12 @@ class Settings(BaseSettings):
     jwt_secret_key: str = Field(alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     access_token_expire_minutes: int = Field(default=60 * 24, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
-    groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
-    embedding_model: str = Field(default="sentence-transformers/all-MiniLM-L6-v2", alias="EMBEDDING_MODEL")
+    groq_model: str = Field(default="openai/gpt-oss-20b", alias="GROQ_MODEL")
+    embedding_model: str = Field(default="embed-multilingual-v3.0", alias="EMBEDDING_MODEL")
     upload_dir: str = Field(default="../uploads", alias="UPLOAD_DIR")
     cors_origins: Annotated[list[str], NoDecode] = Field(default=["http://localhost:3000"], alias="CORS_ORIGINS")
+    cohere_api_key: str = Field(alias="COHERE_API_KEY")
+    cohere_base_url: str = Field(alias="COHERE_BASE_URL")
 
     @field_validator("cors_origins", mode="before")
     @classmethod

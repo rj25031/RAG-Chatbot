@@ -758,8 +758,8 @@ export function DocumentsWorkspace({ user }: { user: User }) {
                 onChange={(event) => setDraftDescription(event.target.value)}
               />
               <Button
-                className="h-10 gap-2 rounded-2xl px-3"
-                disabled={isCreatingFolder}
+                className={`h-10 gap-2 rounded-2xl px-3 ${!draftName.trim() ? "opacity-50" : ""}`}
+                disabled={isCreatingFolder && !draftName.trim()}
                 type="submit"
               >
                 <FolderPlus className="h-4 w-4" />
