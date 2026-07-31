@@ -14,4 +14,4 @@ __pycache__
 .env.local
 uploads/*
 !uploads/.gitkeep
-backend/alembic.ini
+# backend/alembic.ini
