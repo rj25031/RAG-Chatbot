@@ -28,7 +28,7 @@ The app lets a user:
 flowchart LR
     A["Next.js Frontend"] --> B["FastAPI API"]
     B --> C["PostgreSQL + pgvector"]
-    B --> D["SentenceTransformer Embeddings"]
+    B --> D["Cohere Embeddings"]
     B --> E["Groq API"]
     B --> F["uploads/ PDF Storage"]
 ```
@@ -224,12 +224,14 @@ Authorization: Bearer <token>
 
 This is much better than the earlier local-only auth approach, but it is still a simple learning-friendly implementation.
 
+Passwords are hashed with **bcrypt**. Legacy unsalted SHA-256 hashes are still verified on login and upgraded to bcrypt automatically.
+
 For production, you would usually add:
 
 - refresh tokens
 - token rotation
-- stronger password hashing with `bcrypt` or `argon2`
 - secure cookie-based auth if appropriate
+- rate limiting on login/register
 
 ## 7. RAG Data Flow
 
@@ -290,10 +292,13 @@ GROQ_API_KEY=your_groq_api_key
 JWT_SECRET_KEY=change_me_to_a_long_random_secret
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
-GROQ_MODEL=llama-3.3-70b-versatile
-EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+GROQ_MODEL=openai/gpt-oss-20b
+EMBEDDING_MODEL=embed-multilingual-v3.0
+COHERE_API_KEY=your_cohere_api_key
+COHERE_BASE_URL=https://api.cohere.com/compatibility/v1
 UPLOAD_DIR=../uploads
 CORS_ORIGINS=http://localhost:3000
+MAX_UPLOAD_BYTES=26214400
 ```
 
 ### Frontend `.env.local`
@@ -369,9 +374,13 @@ That brings up:
 - backend: `8000`
 - postgres: `5432`
 
-### Important Docker note
+### Important Docker notes
 
 For Docker Compose, the backend database host is `postgres`, not `localhost`. The compose file already overrides `DATABASE_URL` for the containerized backend.
+
+`NEXT_PUBLIC_API_BASE_URL` is baked into the frontend **at image build time** via Docker build args (not runtime env). Change it under `frontend.build.args` in `docker-compose.yml` and rebuild when the API URL changes.
+
+Backend `.env` must include `COHERE_API_KEY` and `COHERE_BASE_URL` for embeddings.
 
 ## 11. Important API Endpoints
 

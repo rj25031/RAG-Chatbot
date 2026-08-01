@@ -30,6 +30,7 @@ import {
   saveCurrentUser,
   saveSelectedModel,
 } from "@/lib/session";
+import { InlineLoader, PageLoader } from "@/components/ui/loader";
 
 export default function SettingsPage() {
   const { user, ready } = useAuthedUser();
@@ -100,7 +101,7 @@ export default function SettingsPage() {
   );
 
   if (!ready || !user) {
-    return null;
+    return <PageLoader label="Loading settings..." />;
   }
 
   const handleProfileSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -137,47 +138,50 @@ export default function SettingsPage() {
   return (
     <AppShell>
       <section className="min-h-0 overflow-y-auto bg-[#f7f7f8]">
-        <div className="border-b border-black/8 bg-white px-5 py-6">
-          <p className="text-xs uppercase tracking-[0.28em] text-black/45">
+        <div className="border-b border-black/8 bg-white px-3 py-4 sm:px-5 sm:py-6">
+          <p className="text-[10px] uppercase tracking-[0.28em] text-black/45 sm:text-xs">
             Settings
           </p>
-          <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <h1 className="text-3xl font-semibold text-ink">
+          <div className="mt-3 flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold text-ink sm:text-3xl">
                 Account and model controls
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-black/60">
-                Manage your profile, rotate your password, and choose which Groq model powers your chats.
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-black/60 sm:leading-7">
+                Manage your profile, rotate your password, and choose which Groq
+                model powers your chats.
               </p>
             </div>
-            <div className="rounded-[28px] border border-[#d8e4dc] bg-[#f5fbf8] px-4 py-3 text-sm text-[#173d31]">
+            <div className="shrink-0 rounded-2xl border border-[#d8e4dc] bg-[#f5fbf8] px-3 py-3 text-sm text-[#173d31] sm:rounded-[28px] sm:px-4">
               Current chat model:{" "}
-              <span className="font-semibold">
+              <span className="break-all font-semibold">
                 {selectedModel || modelsQuery.data?.current_model || "Loading..."}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-          <div className="space-y-5">
+        <div className="grid gap-4 p-3 sm:gap-5 sm:p-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+          <div className="space-y-4 sm:space-y-5">
             <form
-              className="rounded-[32px] border border-black/8 bg-white p-6 shadow-sm"
+              className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:rounded-[32px] sm:p-6"
               onSubmit={handleProfileSubmit}
             >
-              <div className="mb-6 flex items-center gap-3">
-                <div className="rounded-2xl bg-[#d8e4dc] p-2.5 text-[#173d31]">
+              <div className="mb-4 flex items-start gap-3 sm:mb-6 sm:items-center">
+                <div className="shrink-0 rounded-2xl bg-[#d8e4dc] p-2.5 text-[#173d31]">
                   <UserCircle2 className="h-5 w-5" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-ink">Profile</h3>
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold text-ink sm:text-lg">
+                    Profile
+                  </h3>
                   <p className="text-sm text-black/55">
                     Update how your account appears across the workspace.
                   </p>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.18em] text-black/40">
                     Full name
@@ -200,29 +204,33 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="mt-5 flex items-center justify-between rounded-3xl bg-[#f7f7f8] px-4 py-4 text-sm text-black/55">
-                <span>Changes are saved to your active local session immediately.</span>
+              <div className="mt-5 flex flex-col gap-3 rounded-2xl bg-[#f7f7f8] px-3 py-3 text-sm text-black/55 sm:flex-row sm:items-center sm:justify-between sm:rounded-3xl sm:px-4 sm:py-4">
+                <span>
+                  Changes are saved to your active local session immediately.
+                </span>
                 <Button
-                  className="gap-2 rounded-2xl px-4"
+                  className="w-full shrink-0 gap-2 rounded-2xl px-4 sm:w-auto"
                   type="submit"
-                  disabled={profileMutation.isPending}
+                  loading={profileMutation.isPending}
                 >
-                  <Save className="h-4 w-4" />
+                  {!profileMutation.isPending ? <Save className="h-4 w-4" /> : null}
                   {profileMutation.isPending ? "Saving..." : "Save Profile"}
                 </Button>
               </div>
             </form>
 
             <form
-              className="rounded-[32px] border border-black/8 bg-white p-6 shadow-sm"
+              className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:rounded-[32px] sm:p-6"
               onSubmit={handlePasswordSubmit}
             >
-              <div className="mb-6 flex items-center gap-3">
-                <div className="rounded-2xl bg-[#efe4d6] p-2.5 text-[#8a4b14]">
+              <div className="mb-4 flex items-start gap-3 sm:mb-6 sm:items-center">
+                <div className="shrink-0 rounded-2xl bg-[#efe4d6] p-2.5 text-[#8a4b14]">
                   <KeyRound className="h-5 w-5" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-ink">Password</h3>
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold text-ink sm:text-lg">
+                    Password
+                  </h3>
                   <p className="text-sm text-black/55">
                     Change your password without leaving the workspace.
                   </p>
@@ -253,44 +261,54 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="mt-5 flex items-center justify-between rounded-3xl bg-[#f7f7f8] px-4 py-4 text-sm text-black/55">
-                <span>Use a new password you are not already using for this account.</span>
+              <div className="mt-5 flex flex-col gap-3 rounded-2xl bg-[#f7f7f8] px-3 py-3 text-sm text-black/55 sm:flex-row sm:items-center sm:justify-between sm:rounded-3xl sm:px-4 sm:py-4">
+                <span>
+                  Use a new password you are not already using for this account.
+                </span>
                 <Button
-                  className="gap-2 rounded-2xl px-4"
+                  className="w-full shrink-0 gap-2 rounded-2xl px-4 sm:w-auto"
                   type="submit"
-                  disabled={passwordMutation.isPending}
+                  loading={passwordMutation.isPending}
                 >
-                  <ShieldCheck className="h-4 w-4" />
-                  {passwordMutation.isPending ? "Updating..." : "Update Password"}
+                  {!passwordMutation.isPending ? (
+                    <ShieldCheck className="h-4 w-4" />
+                  ) : null}
+                  {passwordMutation.isPending
+                    ? "Updating..."
+                    : "Update Password"}
                 </Button>
               </div>
             </form>
           </div>
 
-          <div className="space-y-5">
-            <div className="rounded-[32px] border border-black/8 bg-white p-6 shadow-sm">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="rounded-2xl bg-[#171717] p-2.5 text-white">
+          <div className="space-y-4 sm:space-y-5">
+            <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:rounded-[32px] sm:p-6">
+              <div className="mb-4 flex items-start gap-3 sm:mb-6 sm:items-center">
+                <div className="shrink-0 rounded-2xl bg-[#171717] p-2.5 text-white">
                   <Bot className="h-5 w-5" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-ink">Model selection</h3>
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold text-ink sm:text-lg">
+                    Model selection
+                  </h3>
                   <p className="text-sm text-black/55">
                     Choose the Groq model your chat requests should use.
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-black/8 bg-[#f7f7f8] p-4">
+              <div className="rounded-2xl border border-black/8 bg-[#f7f7f8] p-3 sm:rounded-3xl sm:p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-black/40">
                   Available Groq models
                 </p>
                 <div className="mt-3">
                   <select
-                    className="h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/20"
+                    className="h-12 w-full rounded-2xl border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/20 sm:px-4"
                     value={selectedModel}
                     onChange={(event) => setSelectedModel(event.target.value)}
-                    disabled={modelsQuery.isLoading || availableModels.length === 0}
+                    disabled={
+                      modelsQuery.isLoading || availableModels.length === 0
+                    }
                   >
                     {availableModels.map((model) => (
                       <option key={model.id} value={model.id}>
@@ -301,8 +319,8 @@ export default function SettingsPage() {
                 </div>
                 <div className="mt-4 grid gap-3">
                   {modelsQuery.isLoading ? (
-                    <div className="rounded-2xl bg-white px-4 py-4 text-sm text-black/55">
-                      Loading Groq models...
+                    <div className="rounded-2xl bg-white px-4 py-6">
+                      <InlineLoader label="Loading Groq models..." />
                     </div>
                   ) : null}
 
@@ -323,10 +341,12 @@ export default function SettingsPage() {
                     .map((model) => (
                       <div
                         key={model.id}
-                        className="rounded-[24px] bg-white px-4 py-4 text-sm text-black/65"
+                        className="rounded-2xl bg-white px-3 py-3 text-sm text-black/65 sm:rounded-[24px] sm:px-4 sm:py-4"
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="font-medium text-ink">{model.id}</span>
+                        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+                          <span className="break-all font-medium text-ink">
+                            {model.id}
+                          </span>
                           {model.active ? (
                             <span className="rounded-full bg-[#d8e4dc] px-2.5 py-1 text-xs font-medium text-[#173d31]">
                               Active
@@ -335,7 +355,8 @@ export default function SettingsPage() {
                         </div>
                         <p className="mt-2">Owner: {model.owned_by ?? "Groq"}</p>
                         <p className="mt-1">
-                          Context window: {model.context_window ?? "Not provided"}
+                          Context window:{" "}
+                          {model.context_window ?? "Not provided"}
                         </p>
                       </div>
                     ))}
@@ -352,13 +373,15 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-black/8 bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="rounded-2xl bg-[#171717] p-2.5 text-white">
+            <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:rounded-[32px] sm:p-6">
+              <div className="mb-4 flex items-start gap-3 sm:items-center">
+                <div className="shrink-0 rounded-2xl bg-[#171717] p-2.5 text-white">
                   <LogOut className="h-5 w-5" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-ink">Session</h3>
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold text-ink sm:text-lg">
+                    Session
+                  </h3>
                   <p className="text-sm text-black/55">
                     Clear the current local session and model preference.
                   </p>
@@ -379,8 +402,10 @@ export default function SettingsPage() {
               </Button>
             </div>
 
-            <div className="rounded-[32px] border border-[#d8e4dc] bg-[#f5fbf8] p-6 text-sm leading-7 text-[#173d31]">
-              Model choices are fetched live from Groq and your selected model is saved in this browser, so chat starts using it immediately on the next message.
+            <div className="rounded-2xl border border-[#d8e4dc] bg-[#f5fbf8] p-4 text-sm leading-6 text-[#173d31] sm:rounded-[32px] sm:p-6 sm:leading-7">
+              Model choices are fetched live from Groq and your selected model
+              is saved in this browser, so chat starts using it immediately on
+              the next message.
             </div>
           </div>
         </div>

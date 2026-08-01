@@ -28,4 +28,8 @@ class Conversation(Base):
 
     user: Mapped["User"] = relationship(back_populates="conversations")
     folder: Mapped["Folder"] = relationship(back_populates="conversations")
-    messages: Mapped[list["Message"]] = relationship(back_populates="conversation", cascade="all, delete-orphan")
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="Message.id",
+    )

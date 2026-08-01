@@ -11,6 +11,7 @@ class QAState(TypedDict, total=False):
     question: str
     context: str
     model: str
+    history: list[dict[str, str]]
     answer: str
 
 
@@ -18,14 +19,13 @@ def build_qa_graph():
     graph = StateGraph(QAState)
 
     def answer_node(state: QAState) -> QAState:
-        prompt = (
-            "Question:\n"
-            f"{state['question']}\n\n"
-            "Context:\n"
-            f"{state['context']}\n\n"
-            "Return a concise answer grounded in the context and include inline citations."
+        answer = generate_answer(
+            question=state["question"],
+            context=state.get("context") or "",
+            model=state.get("model"),
+            history=state.get("history") or [],
         )
-        return {"answer": generate_answer(prompt, state.get("model"))}
+        return {"answer": answer}
 
     graph.add_node("answer", answer_node)
     graph.set_entry_point("answer")

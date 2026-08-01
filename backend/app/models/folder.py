@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -11,6 +11,23 @@ from app.models._timestamps import utc_now
 
 class Folder(Base):
     __tablename__ = "folders"
+    __table_args__ = (
+        Index(
+            "uq_folders_owner_root_name",
+            "owner_id",
+            "name",
+            unique=True,
+            postgresql_where=text("parent_folder_id IS NULL"),
+        ),
+        Index(
+            "uq_folders_owner_parent_name",
+            "owner_id",
+            "parent_folder_id",
+            "name",
+            unique=True,
+            postgresql_where=text("parent_folder_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)

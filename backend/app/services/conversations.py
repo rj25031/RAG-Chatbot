@@ -37,7 +37,11 @@ def get_or_create_conversation(
 ) -> Conversation:
     if conversation_id is not None:
         conversation = db.get(Conversation, conversation_id)
-        if conversation is None or conversation.user_id != user_id:
+        if (
+            conversation is None
+            or conversation.user_id != user_id
+            or conversation.folder_id != folder_id
+        ):
             raise HTTPException(status_code=404, detail="Conversation not found")
         return conversation
 
@@ -102,6 +106,29 @@ def truncate_conversation_from_message(
         conversation.title = trimmed[:80] if trimmed else "New chat"
 
     conversation.last_message_at = datetime.now(timezone.utc)
+    db.flush()
+
+
+def get_recent_messages(
+    db: Session,
+    conversation_id: int,
+    *,
+    limit: int = 12,
+) -> list[Message]:
+    """Return the most recent messages in chronological order for multi-turn context."""
+    if limit < 1:
+        return []
+
+    rows = list(
+        db.scalars(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.id.desc())
+            .limit(limit)
+        ).all()
+    )
+    rows.reverse()
+    return rows
 
 
 def list_conversations(db: Session, user_id: int) -> list[Conversation]:
@@ -122,6 +149,8 @@ def get_conversation_detail(db: Session, conversation_id: int) -> Conversation:
     conversation = db.scalar(statement)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+    # Relationship is ordered by Message.id; sort defensively as well.
+    conversation.messages.sort(key=lambda message: message.id)
     return conversation
 
 

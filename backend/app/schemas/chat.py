@@ -2,18 +2,34 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 class ChatRequest(BaseModel):
     user_id: int | None = None
     folder_id: int
     document_id: int | None = None
-    question: str
+    question: str = Field(min_length=1, max_length=8000)
     conversation_id: int | None = None
     edit_message_id: int | None = None
-    model: str | None = None
-    top_k: int = 6
+    model: str | None = Field(default=None, max_length=200)
+    top_k: int = Field(default=6, ge=1, le=20)
+
+    @field_validator("question")
+    @classmethod
+    def strip_question(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Question is required")
+        return cleaned
+
+    @field_validator("model")
+    @classmethod
+    def strip_model(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
 
 
 class Citation(BaseModel):

@@ -3,12 +3,13 @@
 import { useAuthedUser } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { ChatPanel } from "@/components/chat-panel";
+import { PageLoader } from "@/components/ui/loader";
 
 export default function ChatPage() {
   const { user, ready } = useAuthedUser();
 
   if (!ready || !user) {
-    return null;
+    return <PageLoader label="Loading chat..." />;
   }
 
   return (

@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = Field(default=["http://localhost:3000"], alias="CORS_ORIGINS")
     cohere_api_key: str = Field(alias="COHERE_API_KEY")
     cohere_base_url: str = Field(alias="COHERE_BASE_URL")
+    max_upload_bytes: int = Field(default=25 * 1024 * 1024, alias="MAX_UPLOAD_BYTES")
+
+    @field_validator("jwt_algorithm")
+    @classmethod
+    def only_hs256(cls, value: str) -> str:
+        if value != "HS256":
+            raise ValueError("Only HS256 is supported for JWT_ALGORITHM")
+        return value
 
     @field_validator("cors_origins", mode="before")
     @classmethod

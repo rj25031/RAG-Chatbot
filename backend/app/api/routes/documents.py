@@ -97,7 +97,7 @@ async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Document:
+) -> DocumentRead:
     folder = db.get(Folder, folder_id)
     if folder is None or folder.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Folder not found")
@@ -111,7 +111,14 @@ async def upload_document(
         uploaded_by_user_id=current_user.id,
         upload=file,
     )
-    return document
+    document = db.scalar(
+        select(Document)
+        .options(selectinload(Document.folder))
+        .where(Document.id == document.id)
+    )
+    if document is None:
+        raise HTTPException(status_code=500, detail="Document was not saved")
+    return serialize_document(document)
 
 
 @router.delete("/{document_id}", status_code=204)

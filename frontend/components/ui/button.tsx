@@ -1,12 +1,21 @@
 import * as React from "react";
 
+import { Spinner } from "@/components/ui/loader";
 import { cn } from "@/lib/utils";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost";
+  loading?: boolean;
 };
 
-export function Button({ className, variant = "primary", ...props }: ButtonProps) {
+export function Button({
+  className,
+  variant = "primary",
+  loading = false,
+  disabled,
+  children,
+  ...props
+}: ButtonProps) {
   return (
     <button
       className={cn(
@@ -16,8 +25,13 @@ export function Button({ className, variant = "primary", ...props }: ButtonProps
         variant === "ghost" && "bg-white/60 text-ink hover:bg-white",
         className,
       )}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
-    />
+    >
+      {loading ? <Spinner size="sm" className="mr-2" /> : null}
+      {children}
+    </button>
   );
 }
 

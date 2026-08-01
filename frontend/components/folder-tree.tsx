@@ -10,6 +10,7 @@ import type { User } from "@/types";
 import type { FolderNode } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FolderTreeSkeleton } from "@/components/ui/loader";
 import { cn } from "@/lib/utils";
 
 function TreeNode({
@@ -166,8 +167,12 @@ export function FolderTree({
             value={description}
             onChange={(event) => setDescription(event.target.value)}
           />
-          <Button className="w-full gap-2 rounded-2xl" type="submit" disabled={createMutation.isPending}>
-            <FolderPlus className="h-4 w-4" />
+          <Button
+            className="w-full gap-2 rounded-2xl"
+            type="submit"
+            loading={createMutation.isPending}
+          >
+            {!createMutation.isPending ? <FolderPlus className="h-4 w-4" /> : null}
             {createMutation.isPending
               ? "Creating folder..."
               : selectedFolderId
@@ -178,24 +183,26 @@ export function FolderTree({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        {foldersQuery.isLoading && <p className="text-sm text-black/55">Loading folders...</p>}
+        {foldersQuery.isLoading ? <FolderTreeSkeleton /> : null}
         {!foldersQuery.isLoading && !hasFolders && (
           <p className="rounded-2xl border border-dashed border-black/10 p-4 text-sm text-black/60">
             Create a root folder to begin organizing documents.
           </p>
         )}
         <div className="space-y-2">
-          {foldersQuery.data?.map((folder) => (
-            <TreeNode
-              key={folder.id}
-              node={folder}
-              depth={0}
-              selectedFolderId={selectedFolderId}
-              onSelect={onSelect}
-              expandedIds={expandedIds}
-              onToggle={toggleExpanded}
-            />
-          ))}
+          {!foldersQuery.isLoading
+            ? foldersQuery.data?.map((folder) => (
+                <TreeNode
+                  key={folder.id}
+                  node={folder}
+                  depth={0}
+                  selectedFolderId={selectedFolderId}
+                  onSelect={onSelect}
+                  expandedIds={expandedIds}
+                  onToggle={toggleExpanded}
+                />
+              ))
+            : null}
         </div>
       </div>
     </aside>

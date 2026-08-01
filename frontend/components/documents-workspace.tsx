@@ -11,6 +11,7 @@ import {
   FolderPlus,
   Folders,
   Home,
+  Menu,
   MoveLeft,
   Save,
   Trash2,
@@ -31,6 +32,12 @@ import {
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DocumentListSkeleton,
+  FolderTreeSkeleton,
+  SectionLoader,
+  Spinner,
+} from "@/components/ui/loader";
 import type { DocumentItem, FolderNode, User } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -129,13 +136,13 @@ function DeleteConfirmationDialog({
       aria-modal="true"
       aria-labelledby="delete-confirmation-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff5f5] text-[#b42318]">
+      <div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-4 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:p-5">
+        <div className="flex items-start justify-between gap-3 sm:gap-4">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#fff5f5] text-[#b42318]">
               <Trash2 className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3
                 id="delete-confirmation-title"
                 className="text-base font-semibold text-ink"
@@ -158,7 +165,7 @@ function DeleteConfirmationDialog({
           </button>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
             className="h-10 rounded-lg border border-black/10 px-4"
             variant="ghost"
@@ -172,7 +179,7 @@ function DeleteConfirmationDialog({
             className="h-10 rounded-lg bg-[#b42318] px-4 text-white hover:bg-[#9f1f16]"
             onClick={onConfirm}
             type="button"
-            disabled={isPending}
+            loading={isPending}
           >
             {isPending ? "Deleting..." : "Delete"}
           </Button>
@@ -337,6 +344,7 @@ export function DocumentsWorkspace({ user }: { user: User }) {
   const [editingDescription, setEditingDescription] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] =
     useState<DeleteConfirmationState>(null);
+  const [folderNavOpen, setFolderNavOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -505,6 +513,15 @@ export function DocumentsWorkspace({ user }: { user: User }) {
     }
   }, [breadcrumbFolders]);
 
+  useEffect(() => {
+    if (!folderNavOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [folderNavOpen]);
+
   const handleCreateFolder = (event: FormEvent) => {
     event.preventDefault();
     if (!draftName.trim()) return;
@@ -553,7 +570,7 @@ export function DocumentsWorkspace({ user }: { user: User }) {
     });
   };
   return (
-    <section className="grid h-full min-h-0 grid-cols-1 xl:grid-cols-[1fr_320px]">
+    <section className="relative flex h-full min-h-0">
       <DeleteConfirmationDialog
         state={deleteConfirmation}
         isPending={
@@ -562,16 +579,30 @@ export function DocumentsWorkspace({ user }: { user: User }) {
         onClose={() => setDeleteConfirmation(null)}
         onConfirm={handleConfirmDelete}
       />
-      <div className="flex min-h-0 flex-col bg-white">
-        <div className="border-b border-black/8 px-4 py-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-black/45">
-                  Document Explorer
-                </p>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">
+        <div className="border-b border-black/8 px-3 py-3 sm:px-4 sm:py-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-black/45 sm:text-xs">
+                    Document Explorer
+                  </p>
+                  <Button
+                    variant="ghost"
+                    className="h-9 gap-2 rounded-2xl px-3 text-xs xl:hidden"
+                    onClick={() => setFolderNavOpen(true)}
+                    type="button"
+                  >
+                    <Menu className="h-4 w-4" />
+                    Folders
+                  </Button>
+                </div>
                 {selectedFolder && isEditingSelectedFolder ? (
-                  <form className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]" onSubmit={handleUpdateFolder}>
+                  <form
+                    className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]"
+                    onSubmit={handleUpdateFolder}
+                  >
                     <Input
                       className="py-2"
                       value={editingName}
@@ -581,35 +612,43 @@ export function DocumentsWorkspace({ user }: { user: User }) {
                       className="py-2"
                       placeholder="Optional description"
                       value={editingDescription}
-                      onChange={(event) => setEditingDescription(event.target.value)}
+                      onChange={(event) =>
+                        setEditingDescription(event.target.value)
+                      }
                     />
-                    <Button
-                      aria-label="Save folder"
-                      className="h-9 w-9 rounded-full p-0"
-                      disabled={updateFolderMutation.isPending}
-                      title="Save folder"
-                      type="submit"
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      aria-label="Cancel folder edit"
-                      variant="ghost"
-                      className="h-9 w-9 rounded-full p-0"
-                      onClick={() => setEditingFolderId(null)}
-                      title="Cancel"
-                      type="button"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2 sm:col-span-2 lg:col-span-1">
+                      <Button
+                        aria-label="Save folder"
+                        className="h-9 w-9 rounded-full p-0"
+                        disabled={updateFolderMutation.isPending}
+                        title="Save folder"
+                        type="submit"
+                      >
+                        {updateFolderMutation.isPending ? (
+                          <Spinner size="sm" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        aria-label="Cancel folder edit"
+                        variant="ghost"
+                        className="h-9 w-9 rounded-full p-0"
+                        onClick={() => setEditingFolderId(null)}
+                        title="Cancel"
+                        type="button"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </form>
                 ) : (
-                  <div className="mt-1.5 flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-ink">
+                  <div className="mt-1.5 flex min-w-0 items-center gap-2">
+                    <h3 className="truncate text-base font-semibold text-ink sm:text-lg">
                       {selectedFolder ? selectedFolder.name : "Select a folder"}
                     </h3>
                     {selectedFolder ? (
-                      <div className="flex items-center gap-1">
+                      <div className="flex shrink-0 items-center gap-1">
                         <button
                           aria-label="Edit selected folder"
                           className="flex h-8 w-8 items-center justify-center rounded-full text-black/45 transition hover:bg-black/5 hover:text-black/75"
@@ -679,25 +718,31 @@ export function DocumentsWorkspace({ user }: { user: User }) {
                     variant="secondary"
                     className="h-9 gap-2 rounded-2xl px-3"
                     disabled={!selectedFolderId || isUploading}
+                    loading={isUploading}
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    <UploadCloud className="h-4 w-4" />
-                    {isUploading ? "Uploading PDF..." : "Upload PDF"}
+                    {!isUploading ? <UploadCloud className="h-4 w-4" /> : null}
+                    <span className="hidden sm:inline">
+                      {isUploading ? "Uploading PDF..." : "Upload PDF"}
+                    </span>
+                    <span className="sm:hidden">
+                      {isUploading ? "Uploading..." : "Upload"}
+                    </span>
                   </Button>
                 </label>
               </div>
             </div>
 
             {breadcrumbFolders.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2 text-sm text-black/50">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-black/50 sm:gap-2 sm:text-sm">
                 {breadcrumbFolders.map((folder, index) => (
-                  <div key={folder.id} className="flex items-center gap-2">
+                  <div key={folder.id} className="flex items-center gap-1.5 sm:gap-2">
                     {index > 0 ? (
-                      <ChevronRight className="h-3.5 w-3.5 text-black/30" />
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-black/30" />
                     ) : null}
                     <button
                       className={cn(
-                        "transition hover:text-ink",
+                        "max-w-[140px] truncate transition hover:text-ink sm:max-w-none",
                         index === breadcrumbFolders.length - 1
                           ? "font-medium text-ink"
                           : "text-black/50",
@@ -713,7 +758,7 @@ export function DocumentsWorkspace({ user }: { user: User }) {
             ) : null}
 
             <form
-              className="grid gap-2 rounded-[24px] border border-black/8 bg-[#f7f7f8] p-3 xl:grid-cols-[auto_auto_minmax(0,1fr)_minmax(0,1fr)_auto]"
+              className="grid grid-cols-1 gap-2 rounded-2xl border border-black/8 bg-[#f7f7f8] p-3 sm:rounded-[24px] md:grid-cols-2 xl:grid-cols-[auto_auto_minmax(0,1fr)_minmax(0,1fr)_auto]"
               onSubmit={handleCreateFolder}
             >
               <button
@@ -742,7 +787,7 @@ export function DocumentsWorkspace({ user }: { user: User }) {
                 Inside current
               </button>
               <Input
-                className="py-2.5"
+                className="py-2.5 md:col-span-1 xl:col-span-1"
                 placeholder={
                   creationTarget === "root"
                     ? "New root folder"
@@ -758,41 +803,51 @@ export function DocumentsWorkspace({ user }: { user: User }) {
                 onChange={(event) => setDraftDescription(event.target.value)}
               />
               <Button
-                className={`h-10 gap-2 rounded-2xl px-3 ${!draftName.trim() ? "opacity-50" : ""}`}
-                disabled={isCreatingFolder && !draftName.trim()}
+                className={cn(
+                  "h-10 gap-2 rounded-2xl px-3 md:col-span-2 xl:col-span-1",
+                  !draftName.trim() && "opacity-50",
+                )}
+                disabled={isCreatingFolder || !draftName.trim()}
+                loading={isCreatingFolder}
                 type="submit"
               >
-                <FolderPlus className="h-4 w-4" />
+                {!isCreatingFolder ? <FolderPlus className="h-4 w-4" /> : null}
                 {isCreatingFolder ? "Creating..." : "Create"}
               </Button>
             </form>
           </div>
         </div>
 
-        {!selectedFolderId ? (
-          <div className="flex flex-1 items-center justify-center bg-[#f7f7f8] px-6">
+        {foldersQuery.isLoading ? (
+          <SectionLoader label="Loading folders..." />
+        ) : !selectedFolderId ? (
+          <div className="flex flex-1 items-center justify-center bg-[#f7f7f8] px-4 sm:px-6">
             <div className="max-w-lg text-center">
-              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[24px] bg-[#d8e4dc] text-[#173d31]">
-                <FolderOpen className="h-7 w-7" />
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[22px] bg-[#d8e4dc] text-[#173d31] sm:mb-5 sm:h-16 sm:w-16 sm:rounded-[24px]">
+                <FolderOpen className="h-6 w-6 sm:h-7 sm:w-7" />
               </div>
-              <h4 className="text-2xl font-semibold text-ink">
+              <h4 className="text-xl font-semibold text-ink sm:text-2xl">
                 Select a folder to explore documents
               </h4>
             </div>
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f7f8] px-4 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f7f8] px-3 py-3 sm:px-4 sm:py-4">
             {isUploading ? (
-              <div className="mb-4 rounded-3xl border border-[#d8e4dc] bg-white px-4 py-4 text-sm text-[#173d31] shadow-sm">
-                Upload in progress. We&apos;re processing the PDF and it will appear here once indexing finishes.
+              <div className="mb-4 flex items-center gap-3 rounded-2xl border border-[#d8e4dc] bg-white px-3 py-3 text-sm text-[#173d31] shadow-sm sm:rounded-3xl sm:px-4 sm:py-4">
+                <Spinner size="sm" className="shrink-0 text-[#2f6d57]" />
+                <span>
+                  Upload in progress. We&apos;re processing the PDF and it will
+                  appear here once indexing finishes.
+                </span>
               </div>
             ) : null}
 
-            <div className="mb-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {childFolders.map((folder) => (
                 <div
                   key={folder.id}
-                  className="rounded-[24px] border border-black/8 bg-white p-4 text-left transition hover:-translate-y-[1px] hover:border-black/12 hover:shadow-sm"
+                  className="rounded-2xl border border-black/8 bg-white p-3 text-left transition hover:-translate-y-[1px] hover:border-black/12 hover:shadow-sm sm:rounded-[24px] sm:p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <button
@@ -849,7 +904,8 @@ export function DocumentsWorkspace({ user }: { user: User }) {
               ))}
             </div>
 
-            <div className="mb-3 grid grid-cols-[minmax(0,2fr)_140px_100px_150px_70px] gap-3 rounded-3xl border border-black/8 bg-white px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-black/45">
+            {/* Desktop table header */}
+            <div className="mb-3 hidden grid-cols-[minmax(0,2fr)_minmax(100px,140px)_80px_minmax(120px,150px)_70px] gap-3 rounded-3xl border border-black/8 bg-white px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-black/45 lg:grid">
               <span>Document</span>
               <span>Folder</span>
               <span>Pages</span>
@@ -858,55 +914,80 @@ export function DocumentsWorkspace({ user }: { user: User }) {
             </div>
 
             <div className="space-y-2.5">
-              {documentsQuery.isLoading ? (
-                <div className="rounded-3xl border border-black/8 bg-white px-5 py-6 text-sm text-black/55">
-                  Loading documents...
-                </div>
-              ) : null}
+              {documentsQuery.isLoading ? <DocumentListSkeleton /> : null}
 
-              {documents.map((document: DocumentItem) => (
-                <div
-                  key={document.id}
-                  className="grid grid-cols-[minmax(0,2fr)_140px_100px_150px_70px] gap-3 rounded-3xl border border-black/8 bg-white px-4 py-3 transition hover:-translate-y-[1px] hover:border-black/12 hover:shadow-sm"
-                >
-                  <Link href={`/documents/${document.id}`} className="flex min-w-0 items-start gap-3">
-                    <div className="rounded-2xl bg-[#d8e4dc] p-2 text-[#173d31]">
-                      <FileText className="h-4 w-4" />
+              {!documentsQuery.isLoading
+                ? documents.map((document: DocumentItem) => (
+                    <div
+                      key={document.id}
+                      className="rounded-2xl border border-black/8 bg-white p-3 transition hover:-translate-y-[1px] hover:border-black/12 hover:shadow-sm sm:rounded-3xl sm:p-4 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(100px,140px)_80px_minmax(120px,150px)_70px] lg:items-start lg:gap-3 lg:p-0 lg:px-4 lg:py-3"
+                    >
+                      <Link
+                        href={`/documents/${document.id}`}
+                        className="flex min-w-0 items-start gap-3"
+                      >
+                        <div className="rounded-2xl bg-[#d8e4dc] p-2 text-[#173d31]">
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-ink">
+                            {document.original_filename}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-sm text-black/55 lg:truncate lg:line-clamp-none">
+                            {document.summary ??
+                              "Indexed PDF ready for retrieval"}
+                          </p>
+                          <p className="mt-1.5 text-xs uppercase tracking-[0.18em] text-black/40">
+                            {formatBytes(document.file_size)} |{" "}
+                            {document.status}
+                          </p>
+                        </div>
+                      </Link>
+
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-black/6 pt-3 lg:mt-0 lg:contents lg:border-0 lg:pt-0">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-black/60 lg:contents">
+                          <p className="lg:text-sm">
+                            <span className="mr-1 text-[10px] uppercase tracking-[0.14em] text-black/40 lg:hidden">
+                              Folder
+                            </span>
+                            {document.folder_name ?? "Folder"}
+                          </p>
+                          <p className="lg:text-sm">
+                            <span className="mr-1 text-[10px] uppercase tracking-[0.14em] text-black/40 lg:hidden">
+                              Pages
+                            </span>
+                            {document.page_count}
+                          </p>
+                          <p className="lg:text-sm">
+                            <span className="mr-1 text-[10px] uppercase tracking-[0.14em] text-black/40 lg:hidden">
+                              Updated
+                            </span>
+                            {formatDate(document.updated_at)}
+                          </p>
+                        </div>
+                        <button
+                          aria-label={`Delete ${document.original_filename}`}
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-black/45 transition hover:bg-black/5 hover:text-red-700"
+                          disabled={deleteDocumentMutation.isPending}
+                          onClick={() => handleDeleteDocument(document)}
+                          title="Delete document"
+                          type="button"
+                        >
+                          {deleteDocumentMutation.isPending &&
+                          deleteConfirmation?.kind === "document" &&
+                          deleteConfirmation.document.id === document.id ? (
+                            <Spinner size="sm" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-ink">
-                        {document.original_filename}
-                      </p>
-                      <p className="mt-1 truncate text-sm text-black/55">
-                        {document.summary ?? "Indexed PDF ready for retrieval"}
-                      </p>
-                      <p className="mt-1.5 text-xs uppercase tracking-[0.18em] text-black/40">
-                        {formatBytes(document.file_size)} | {document.status}
-                      </p>
-                    </div>
-                  </Link>
-                  <p className="text-sm text-black/60">
-                    {document.folder_name ?? "Folder"}
-                  </p>
-                  <p className="text-sm text-black/60">{document.page_count}</p>
-                  <p className="text-sm text-black/60">
-                    {formatDate(document.updated_at)}
-                  </p>
-                  <button
-                    aria-label={`Delete ${document.original_filename}`}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-black/45 transition hover:bg-black/5 hover:text-red-700"
-                    disabled={deleteDocumentMutation.isPending}
-                    onClick={() => handleDeleteDocument(document)}
-                    title="Delete document"
-                    type="button"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+                  ))
+                : null}
 
               {!documentsQuery.isLoading && documents.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-black/10 bg-white px-5 py-6 text-sm text-black/55">
+                <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-5 text-sm text-black/55 sm:rounded-3xl sm:px-5 sm:py-6">
                   No PDFs found in this folder tree yet.
                 </div>
               ) : null}
@@ -915,19 +996,45 @@ export function DocumentsWorkspace({ user }: { user: User }) {
         )}
       </div>
 
-      <aside className="flex min-h-0 flex-col border-r border-black/8 bg-[#f5f6f7]">
-        <div className="border-b border-black/8 px-4 py-4">
-          <p className="text-xs uppercase tracking-[0.28em] text-black/45">
-            Folder Switcher
-          </p>
-          <h3 className="mt-2 flex items-center gap-2 text-base font-semibold text-ink">
-            <Folders className="h-4 w-4 text-[#2f6d57]" />
-            {flatFolders.length} folders
-          </h3>
-          <div className="mt-3 grid grid-cols-3 gap-2">
+      {folderNavOpen ? (
+        <button
+          className="fixed inset-0 z-40 bg-black/35 xl:hidden"
+          onClick={() => setFolderNavOpen(false)}
+          type="button"
+          aria-label="Close folder switcher"
+        />
+      ) : null}
+
+      <aside
+        className={cn(
+          "fixed inset-y-0 right-0 z-50 flex w-full max-w-[320px] flex-col border-l border-black/8 bg-[#f5f6f7] shadow-[-12px_0_40px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out xl:static xl:z-auto xl:w-[320px] xl:max-w-none xl:shrink-0 xl:translate-x-0 xl:shadow-none",
+          folderNavOpen ? "translate-x-0" : "translate-x-full xl:translate-x-0",
+        )}
+      >
+        <div className="border-b border-black/8 px-3 py-3 sm:px-4 sm:py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.28em] text-black/45 sm:text-xs">
+                Folder Switcher
+              </p>
+              <h3 className="mt-2 flex items-center gap-2 text-base font-semibold text-ink">
+                <Folders className="h-4 w-4 shrink-0 text-[#2f6d57]" />
+                {flatFolders.length} folders
+              </h3>
+            </div>
+            <button
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-black/45 transition hover:bg-black/5 hover:text-ink xl:hidden"
+              onClick={() => setFolderNavOpen(false)}
+              type="button"
+              aria-label="Close folder switcher"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
             <Button
               variant="ghost"
-              className="h-9 rounded-2xl px-3 text-xs"
+              className="h-9 rounded-2xl px-2 text-xs sm:px-3"
               onClick={() =>
                 selectedFolderId && setSelectedFolderId(selectedFolderId)
               }
@@ -937,7 +1044,7 @@ export function DocumentsWorkspace({ user }: { user: User }) {
             </Button>
             <Button
               variant="ghost"
-              className="h-9 rounded-2xl px-3 text-xs"
+              className="h-9 rounded-2xl px-2 text-xs sm:px-3"
               onClick={() => setExpandedIds(new Set())}
               type="button"
             >
@@ -945,7 +1052,7 @@ export function DocumentsWorkspace({ user }: { user: User }) {
             </Button>
             <Button
               variant="ghost"
-              className="h-9 rounded-2xl px-3 text-xs"
+              className="col-span-2 h-9 rounded-2xl px-2 text-xs sm:col-span-1 sm:px-3"
               onClick={() => setExpandedIds(new Set(expandableIds))}
               type="button"
             >
@@ -956,19 +1063,28 @@ export function DocumentsWorkspace({ user }: { user: User }) {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           <div className="space-y-1.5">
-            {folders.map((folder) => (
-              <FolderNavNode
-                key={folder.id}
-                node={folder}
-                depth={0}
-                selectedFolderId={selectedFolderId}
-                onSelect={setSelectedFolderId}
-                expandedIds={expandedIds}
-                onToggle={toggleExpanded}
-                onBeginEdit={beginFolderEdit}
-                onDelete={handleDeleteFolder}
-              />
-            ))}
+            {foldersQuery.isLoading ? <FolderTreeSkeleton /> : null}
+            {!foldersQuery.isLoading
+              ? folders.map((folder) => (
+                  <FolderNavNode
+                    key={folder.id}
+                    node={folder}
+                    depth={0}
+                    selectedFolderId={selectedFolderId}
+                    onSelect={(folderId) => {
+                      setSelectedFolderId(folderId);
+                      setFolderNavOpen(false);
+                    }}
+                    expandedIds={expandedIds}
+                    onToggle={toggleExpanded}
+                    onBeginEdit={(folderNode) => {
+                      beginFolderEdit(folderNode);
+                      setFolderNavOpen(false);
+                    }}
+                    onDelete={handleDeleteFolder}
+                  />
+                ))
+              : null}
             {!foldersQuery.isLoading && folders.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-5 text-sm text-black/55">
                 No folders yet. Create a root folder to start.
@@ -980,3 +1096,4 @@ export function DocumentsWorkspace({ user }: { user: User }) {
     </section>
   );
 }
+

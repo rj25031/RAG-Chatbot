@@ -5,13 +5,16 @@ import { useParams } from "next/navigation";
 import { useAuthedUser } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { DocumentDetailView } from "@/components/document-detail-view";
+import { PageLoader } from "@/components/ui/loader";
 
 export default function DocumentDetailPage() {
   const { user, ready } = useAuthedUser();
   const params = useParams<{ documentId: string }>();
+  const documentId = Number(params.documentId);
+  const isValidId = Number.isFinite(documentId) && documentId > 0;
 
   if (!ready || !user) {
-    return null;
+    return <PageLoader label="Loading document..." />;
   }
 
   return (
@@ -19,7 +22,11 @@ export default function DocumentDetailPage() {
       title="Document Detail"
       subtitle="Metadata, folder lineage, and source citation snippets for a single indexed PDF."
     >
-      <DocumentDetailView documentId={Number(params.documentId)} />
+      {isValidId ? (
+        <DocumentDetailView documentId={documentId} />
+      ) : (
+        <div className="p-6 text-sm text-black/55">Invalid document id.</div>
+      )}
     </AppShell>
   );
 }

@@ -63,9 +63,9 @@ export function AuthForm({
   };
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-[32px] border border-black/10 bg-white/88 p-8 shadow-panel">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-ink">{title}</h1>
+    <div className="mx-auto w-full max-w-md rounded-2xl border border-black/10 bg-white/88 p-5 shadow-panel sm:rounded-[32px] sm:p-8">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl font-semibold text-ink sm:text-3xl">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-black/55">{description}</p>
       </div>
 
@@ -101,7 +101,7 @@ export function AuthForm({
         <Button
           className="w-full justify-center"
           type="submit"
-          disabled={mutation.isPending}
+          loading={mutation.isPending}
         >
           {mutation.isPending
             ? mode === "register"

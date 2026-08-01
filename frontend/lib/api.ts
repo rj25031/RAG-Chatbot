@@ -27,8 +27,20 @@ async function extractErrorMessage(response: Response) {
   if (contentType.includes("application/json")) {
     const payload = await response.json().catch(() => null);
     if (payload && typeof payload === "object") {
-      if ("detail" in payload && typeof payload.detail === "string") {
-        return payload.detail;
+      if ("detail" in payload) {
+        if (typeof payload.detail === "string") {
+          return payload.detail;
+        }
+        if (Array.isArray(payload.detail)) {
+          const messages = payload.detail
+            .map((item: { msg?: string }) =>
+              typeof item?.msg === "string" ? item.msg : null,
+            )
+            .filter(Boolean);
+          if (messages.length > 0) {
+            return messages.join(" ");
+          }
+        }
       }
 
       if ("message" in payload && typeof payload.message === "string") {
@@ -158,9 +170,13 @@ export async function uploadDocument(folderId: number, file: File) {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
+    cache: "no-store",
   });
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      clearCurrentUser();
+    }
     throw new Error(await extractErrorMessage(response));
   }
 

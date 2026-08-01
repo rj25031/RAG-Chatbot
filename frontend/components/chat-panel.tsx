@@ -5,14 +5,17 @@ import {
   ArrowUp,
   Bot,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Copy,
   FilePenLine,
   FileText,
   FolderOpen,
+  History,
   MessageSquareText,
   Plus,
   Quote,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   X,
@@ -32,6 +35,11 @@ import {
   fetchFolders,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import {
+  ConversationListSkeleton,
+  MessageSkeleton,
+  Spinner,
+} from "@/components/ui/loader";
 import { Textarea } from "@/components/ui/textarea";
 import { getSelectedModel } from "@/lib/session";
 import type {
@@ -61,7 +69,7 @@ function formatTime(value: string | null) {
 
 function markdownClassName(role: Message["role"]) {
   return cn(
-    "text-[15px] leading-8",
+    "overflow-x-auto break-words text-[14px] leading-7 sm:text-[15px] sm:leading-8",
     role === "user" ? "text-ink" : "text-ink [&_.sd-prose]:bg-transparent",
   );
 }
@@ -110,13 +118,13 @@ function ConfirmationDialog({
       aria-modal="true"
       aria-labelledby="confirmation-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff5f5] text-[#b42318]">
+      <div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-4 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:p-5">
+        <div className="flex items-start justify-between gap-3 sm:gap-4">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#fff5f5] text-[#b42318]">
               <Trash2 className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 id="confirmation-title" className="text-base font-semibold text-ink">
                 {title}
               </h3>
@@ -134,7 +142,7 @@ function ConfirmationDialog({
           </button>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
             className="h-10 rounded-lg border border-black/10 px-4"
             variant="ghost"
@@ -148,7 +156,7 @@ function ConfirmationDialog({
             className="h-10 rounded-lg bg-[#b42318] px-4 text-white hover:bg-[#9f1f16]"
             onClick={onConfirm}
             type="button"
-            disabled={isPending}
+            loading={isPending}
           >
             {isPending ? "Deleting..." : "Delete"}
           </Button>
@@ -174,8 +182,15 @@ export function ChatPanel({ user }: { user: User }) {
     new Set(),
   );
   const [sendingMessageId, setSendingMessageId] = useState<number | "composer" | null>(null);
+  const [pendingNewChat, setPendingNewChat] = useState<{
+    userContent: string;
+    assistantContent: string;
+  } | null>(null);
   const [confirmationState, setConfirmationState] =
     useState<ConfirmationState>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyCollapsed, setHistoryCollapsed] = useState(false);
+  const [scopeOpen, setScopeOpen] = useState(false);
 
   const foldersQuery = useQuery({
     queryKey: ["folders"],
@@ -225,6 +240,27 @@ export function ChatPanel({ user }: { user: User }) {
     setEditDraft("");
   }, [selectedConversationId]);
 
+  useEffect(() => {
+    if (!historyOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [historyOpen]);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("kb-chat-history-collapsed");
+    if (saved === "true") setHistoryCollapsed(true);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "kb-chat-history-collapsed",
+      String(historyCollapsed),
+    );
+  }, [historyCollapsed]);
+
   const visibleConversations = useMemo(
     () =>
       (conversationsQuery.data ?? []).filter((item) =>
@@ -265,9 +301,14 @@ export function ChatPanel({ user }: { user: User }) {
       setSendingMessageId(editMessageId ?? "composer");
 
       if (!selectedConversationId) {
+        setPendingNewChat({
+          userContent: trimmedContent,
+          assistantContent: "Thinking...",
+        });
         return { previousConversation: null as ConversationDetail | null };
       }
 
+      setPendingNewChat(null);
       await queryClient.cancelQueries({
         queryKey: ["conversation", selectedConversationId],
       });
@@ -328,6 +369,7 @@ export function ChatPanel({ user }: { user: User }) {
       setEditingMessageId(null);
       setEditDraft("");
       setSendingMessageId(null);
+      setPendingNewChat(null);
       setSelectedConversationId(data.conversation_id);
 
       queryClient.setQueryData<ConversationDetail | undefined>(
@@ -397,6 +439,7 @@ export function ChatPanel({ user }: { user: User }) {
     },
     onError: (error, _variables, context) => {
       setSendingMessageId(null);
+      setPendingNewChat(null);
       if (selectedConversationId && context?.previousConversation) {
         queryClient.setQueryData(
           ["conversation", selectedConversationId],
@@ -449,9 +492,39 @@ export function ChatPanel({ user }: { user: User }) {
     },
   });
 
-  const messages = conversationDetailQuery.data?.messages ?? [];
+  const messages = useMemo(() => {
+    const loaded = conversationDetailQuery.data?.messages ?? [];
+    if (loaded.length > 0 || !pendingNewChat) {
+      return loaded;
+    }
+    const now = new Date().toISOString();
+    return [
+      {
+        id: -1,
+        role: "user" as const,
+        content: pendingNewChat.userContent,
+        citations: null,
+        source_count: 0,
+        created_at: now,
+      },
+      {
+        id: -2,
+        role: "assistant" as const,
+        content: pendingNewChat.assistantContent,
+        citations: [],
+        source_count: 0,
+        created_at: now,
+      },
+    ];
+  }, [conversationDetailQuery.data?.messages, pendingNewChat]);
   const selectedDocument =
     documentOptions.find((item) => item.id === selectedDocumentId) ?? null;
+  const selectedFolderLabel =
+    folderOptions.find((folder) => folder.id === selectedFolderId)?.label ??
+    "Folder";
+  const selectedDocumentLabel = selectedDocument
+    ? selectedDocument.original_filename
+    : "All PDFs";
 
   const handleCopyMessage = async (content: string) => {
     try {
@@ -510,7 +583,7 @@ export function ChatPanel({ user }: { user: User }) {
   };
 
   return (
-    <section className="grid h-full min-h-0 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <section className="relative flex h-full min-h-0">
       <ConfirmationDialog
         state={confirmationState}
         isPending={
@@ -520,246 +593,388 @@ export function ChatPanel({ user }: { user: User }) {
         onClose={() => setConfirmationState(null)}
         onConfirm={handleConfirmDelete}
       />
-      <div className="flex min-h-0 flex-col bg-[#f7f7f8]">
-        <div className="border-b border-black/8 bg-white/82 px-4 py-3">
-          <div className="flex justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-black/45">
-                Conversation Workspace
-              </p>
-              <h3 className="mt-1.5 text-lg font-semibold text-ink">
-                Chat with your knowledge base
-              </h3>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#f7f7f8]">
+        <div className="border-b border-black/8 bg-white/82 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <div className="min-w-0">
+                <p className="hidden text-[10px] uppercase tracking-[0.28em] text-black/45 sm:block">
+                  Conversation Workspace
+                </p>
+                <h3 className="truncate text-sm font-semibold text-ink sm:mt-0.5 sm:text-base">
+                  Chat with your knowledge base
+                </h3>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                <Button
+                  className={cn(
+                    "h-8 rounded-lg border px-2.5 text-xs md:hidden",
+                    scopeOpen
+                      ? "border-[#171717] bg-[#171717] text-white hover:bg-[#171717]"
+                      : "border-black/10 hover:bg-black hover:text-white",
+                  )}
+                  variant="ghost"
+                  onClick={() => setScopeOpen((open) => !open)}
+                  type="button"
+                  aria-expanded={scopeOpen}
+                  aria-controls="chat-scope-panel"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Scope</span>
+                  <ChevronDown
+                    className={cn(
+                      "ml-1 h-3.5 w-3.5 transition-transform duration-200",
+                      scopeOpen && "rotate-180",
+                    )}
+                  />
+                </Button>
+                <Button
+                  className={cn(
+                    "h-8 rounded-lg border px-2.5 text-xs",
+                    !historyCollapsed
+                      ? "border-[#171717] bg-[#171717] text-white hover:bg-[#171717]/90] max-xl:border-black/10 max-xl:bg-transparent max-xl:text-ink max-xl:hover:bg-black max-xl:hover:text-white"
+                      : "border-black/10 hover:bg-black hover:text-white",
+                  )}
+                  variant="ghost"
+                  onClick={() => {
+                    if (window.matchMedia("(min-width: 1280px)").matches) {
+                      setHistoryCollapsed((value) => !value);
+                      return;
+                    }
+                    setHistoryOpen(true);
+                  }}
+                  type="button"
+                  aria-expanded={!historyCollapsed}
+                  title={
+                    historyCollapsed
+                      ? "Show recent conversations"
+                      : "Hide recent conversations"
+                  }
+                >
+                  <History className="h-3.5 w-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">History</span>
+                </Button>
+                <Button
+                  className="h-8 rounded-lg border border-black/10 px-2.5 text-xs hover:bg-black hover:text-white"
+                  variant="ghost"
+                  onClick={() => {
+                    setSelectedConversationId(null);
+                    setEditingMessageId(null);
+                    setQuestion("");
+                    setPendingNewChat(null);
+                  }}
+                  type="button"
+                >
+                  <Plus className="h-3.5 w-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">New</span>
+                </Button>
+              </div>
             </div>
 
-            <div className=" grid gap-3 xl:grid-cols-[1fr_1fr_auto]">
-              
-              <div className="rounded-lg border border-black/10 bg-white p-2 shadow-sm">
-                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-black/45">
-                  <FolderOpen className="h-3.5 w-3.5" />
-                  Folder
-                </div>
+            {/* Mobile: compact summary chip when scope is collapsed */}
+            <button
+              className={cn(
+                "flex min-w-0 items-center gap-2 rounded-lg border border-black/8 bg-[#f7f7f8] px-2.5 py-1.5 text-left transition md:hidden",
+                scopeOpen && "hidden",
+              )}
+              onClick={() => setScopeOpen(true)}
+              type="button"
+            >
+              <FolderOpen className="h-3.5 w-3.5 shrink-0 text-black/45" />
+              <span className="min-w-0 flex-1 truncate text-[11px] text-black/65">
+                <span className="font-medium text-ink">{selectedFolderLabel}</span>
+                <span className="text-black/35"> · </span>
+                <span>{selectedDocumentLabel}</span>
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-black/40" />
+            </button>
 
-                <div className="relative">
-                  <select
-                    className="h-10 w-full appearance-none rounded-lg border border-black/10 bg-[#f8f8f8] px-3 pr-9 text-sm transition-all outline-none hover:border-black/20 focus:border-black/30 focus:bg-white"
-                    value={selectedFolderId ?? ""}
-                    onChange={(event) => {
-                      setSelectedFolderId(Number(event.target.value));
-                      setSelectedConversationId(null);
-                    }}
-                  >
-                    {folderOptions.map((folder) => (
-                      <option key={folder.id} value={folder.id}>
-                        {folder.label}
-                      </option>
-                    ))}
-                  </select>
+            {/* Scope dropdowns: always on desktop, slide panel on mobile */}
+            <div
+              id="chat-scope-panel"
+              className={cn(
+                "grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-out md:grid md:grid-rows-[1fr] md:opacity-100",
+                scopeOpen
+                  ? "grid-rows-[1fr] opacity-100"
+                  : "grid-rows-[0fr] opacity-0 md:opacity-100",
+              )}
+            >
+              <div className="min-h-0">
+                <div className="grid grid-cols-1 gap-1.5 pb-0.5 sm:grid-cols-2 md:gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2 py-1 shadow-sm">
+                    <FolderOpen className="h-3.5 w-3.5 shrink-0 text-black/40" />
+                    <span className="hidden shrink-0 text-[10px] font-medium uppercase tracking-wider text-black/40 sm:inline">
+                      Folder
+                    </span>
+                    <div className="relative min-w-0 flex-1">
+                      <select
+                        className="h-7 w-full appearance-none rounded-md border-0 bg-transparent py-0 pl-0 pr-6 text-xs outline-none focus:ring-0 disabled:opacity-60"
+                        value={selectedFolderId ?? ""}
+                        disabled={foldersQuery.isLoading}
+                        onChange={(event) => {
+                          setSelectedFolderId(Number(event.target.value));
+                          setSelectedConversationId(null);
+                        }}
+                        aria-label="Folder"
+                      >
+                        {foldersQuery.isLoading ? (
+                          <option value="">Loading folders...</option>
+                        ) : null}
+                        {folderOptions.map((folder) => (
+                          <option key={folder.id} value={folder.id}>
+                            {folder.label}
+                          </option>
+                        ))}
+                      </select>
+                      {foldersQuery.isLoading ? (
+                        <Spinner
+                          size="sm"
+                          className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-black/40"
+                        />
+                      ) : (
+                        <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-black/40" />
+                      )}
+                    </div>
+                  </div>
 
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/40" />
+                  <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2 py-1 shadow-sm">
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-black/40" />
+                    <span className="hidden shrink-0 text-[10px] font-medium uppercase tracking-wider text-black/40 sm:inline">
+                      PDF
+                    </span>
+                    <div className="relative min-w-0 flex-1">
+                      <select
+                        className="h-7 w-full appearance-none rounded-md border-0 bg-transparent py-0 pl-0 pr-6 text-xs outline-none focus:ring-0 disabled:opacity-60"
+                        value={selectedDocumentId ?? ""}
+                        disabled={
+                          !selectedFolderId || documentsQuery.isLoading
+                        }
+                        onChange={(event) =>
+                          setSelectedDocumentId(
+                            event.target.value
+                              ? Number(event.target.value)
+                              : null,
+                          )
+                        }
+                        aria-label="PDF"
+                      >
+                        <option value="">
+                          {documentsQuery.isLoading
+                            ? "Loading PDFs..."
+                            : "All PDFs"}
+                        </option>
+                        {documentOptions.map((document) => (
+                          <option key={document.id} value={document.id}>
+                            {document.original_filename}
+                          </option>
+                        ))}
+                      </select>
+                      {documentsQuery.isLoading ? (
+                        <Spinner
+                          size="sm"
+                          className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-black/40"
+                        />
+                      ) : (
+                        <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-black/40" />
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              <div className="rounded-lg border border-black/10 bg-white p-2 shadow-sm">
-                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-black/45">
-                  <FileText className="h-3.5 w-3.5" />
-                  PDF
-                </div>
-
-                <div className="relative">
-                  <select
-                    className="h-10 w-full appearance-none rounded-lg border border-black/10 bg-[#f8f8f8] px-3 pr-9 text-sm transition-all outline-none hover:border-black/20 focus:border-black/30 focus:bg-white"
-                    value={selectedDocumentId ?? ""}
-                    onChange={(event) =>
-                      setSelectedDocumentId(
-                        event.target.value ? Number(event.target.value) : null,
-                      )
-                    }
-                  >
-                    <option value="">All PDFs</option>
-
-                    {documentOptions.map((document) => (
-                      <option key={document.id} value={document.id}>
-                        {document.original_filename}
-                      </option>
-                    ))}
-                  </select>
-
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/40" />
-                </div>
-              </div>
-
-              <Button
-                className="h-10 rounded-lg border border-black/10 px-4 hover:bg-black hover:text-white"
-                variant="ghost"
-                onClick={() => {
-                  setSelectedConversationId(null);
-                  setEditingMessageId(null);
-                  setQuestion("");
-                }}
-                type="button"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                New chat
-              </Button>
             </div>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-8">
-          {messages.length === 0 ? (
-            <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center text-center">
-              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-[24px] bg-[#171717] text-white shadow-lg">
-                <Sparkles className="h-7 w-7" />
-              </div>
-              <h4 className="text-3xl font-semibold text-ink">
-                How can I help with your documents?
-              </h4>
-              <p className="mt-3 max-w-xl text-sm leading-7 text-black/55">
-                Ask questions against the selected folder tree or narrow the
-                scope to one PDF for more targeted answers.
-              </p>
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
+          {selectedConversationId &&
+          conversationDetailQuery.isLoading &&
+          messages.length === 0 ? (
+            <div className="mx-auto max-w-3xl">
+              <MessageSkeleton />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-2 text-center">
+              {foldersQuery.isLoading ? (
+                <>
+                  <Spinner size="lg" className="mb-4 text-[#2f6d57]" />
+                  <p className="text-sm text-black/55">Loading knowledge base...</p>
+                </>
+              ) : (
+                <>
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[22px] bg-[#171717] text-white shadow-lg sm:mb-6 sm:h-16 sm:w-16 sm:rounded-[24px]">
+                    <Sparkles className="h-6 w-6 sm:h-7 sm:w-7" />
+                  </div>
+                  <h4 className="text-xl font-semibold text-ink sm:text-2xl md:text-3xl">
+                    How can I help with your documents?
+                  </h4>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-black/55 sm:mt-3 sm:leading-7">
+                    Ask questions against the selected folder tree or narrow the
+                    scope to one PDF for more targeted answers.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
-            <div className="mx-auto max-w-3xl space-y-8 pb-8">
+            <div className="mx-auto max-w-3xl space-y-5 pb-6 sm:space-y-8 sm:pb-8">
               {messages.map((message: Message) => (
                 <article key={message.id} className="space-y-3">
                   <div
                     className={cn(
-                      "rounded-[28px] px-5 py-5",
+                      "rounded-2xl px-3 py-4 sm:rounded-[28px] sm:px-5 sm:py-5",
                       message.role === "user"
                         ? "bg-white shadow-sm"
                         : "bg-transparent",
                     )}
                   >
-                  <div className="mb-3 flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-2xl",
-                        message.role === "user"
-                          ? "bg-[#171717] text-white"
-                          : "bg-[#d8e4dc] text-[#173d31]",
-                      )}
-                    >
-                      {message.role === "user" ? (
-                        <MessageSquareText className="h-4 w-4" />
-                      ) : (
-                        <Bot className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium capitalize text-ink">
-                        {message.role}
-                      </p>
-                      <p className="text-xs text-black/45">
-                        {formatTime(message.created_at)}
-                      </p>
-                    </div>
-                    <div className="ml-auto flex items-center gap-2">
-                      <Button
-                        className="h-8 rounded-2xl px-3 text-xs"
-                        variant="ghost"
-                        onClick={() => handleCopyMessage(message.content)}
-                        type="button"
+                    <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
+                      <div
+                        className={cn(
+                          "flex h-9 w-9 items-center justify-center rounded-2xl sm:h-10 sm:w-10",
+                          message.role === "user"
+                            ? "bg-[#171717] text-white"
+                            : "bg-[#d8e4dc] text-[#173d31]",
+                        )}
                       >
-                        <Copy className="mr-1.5 h-3.5 w-3.5" />
-                        Copy
-                      </Button>
-                      {message.role === "user" ? (
+                        {message.role === "user" ? (
+                          <MessageSquareText className="h-4 w-4" />
+                        ) : (
+                          <Bot className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium capitalize text-ink">
+                          {message.role}
+                        </p>
+                        <p className="text-xs text-black/45">
+                          {formatTime(message.created_at)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <Button
-                          className="h-8 rounded-2xl px-3 text-xs"
+                          className="h-8 rounded-2xl px-2.5 text-xs sm:px-3"
                           variant="ghost"
-                          onClick={() => handleEditMessage(message)}
+                          onClick={() => handleCopyMessage(message.content)}
                           type="button"
-                          disabled={mutation.isPending}
                         >
-                          <FilePenLine className="mr-1.5 h-3.5 w-3.5" />
-                          Edit
+                          <Copy className="h-3.5 w-3.5 sm:mr-1.5" />
+                          <span className="hidden sm:inline">Copy</span>
                         </Button>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className={markdownClassName(message.role)}>
-                    {message.role === "user" && editingMessageId === message.id ? (
-                      <div className="space-y-3">
-                        <Textarea
-                          value={editDraft}
-                          onChange={(event) => setEditDraft(event.target.value)}
-                          className="min-h-[96px] rounded-2xl border border-black/10 bg-white px-4 py-3 text-[15px] shadow-none"
-                        />
-                        <div className="flex items-center gap-2">
+                        {message.role === "user" ? (
                           <Button
-                            className="h-9 rounded-2xl px-4"
-                            onClick={() => handleSubmitEdit(message.id)}
-                            type="button"
-                            disabled={!editDraft.trim() || mutation.isPending}
-                          >
-                            {sendingMessageId === message.id ? "Sending..." : "Send Edit"}
-                          </Button>
-                          <Button
-                            className="h-9 rounded-2xl px-4"
+                            className="h-8 rounded-2xl px-2.5 text-xs sm:px-3"
                             variant="ghost"
-                            onClick={() => {
-                              setEditingMessageId(null);
-                              setEditDraft("");
-                            }}
+                            onClick={() => handleEditMessage(message)}
                             type="button"
                             disabled={mutation.isPending}
                           >
-                            Cancel
+                            <FilePenLine className="h-3.5 w-3.5 sm:mr-1.5" />
+                            <span className="hidden sm:inline">Edit</span>
                           </Button>
-                        </div>
-                        <p className="text-xs text-black/50">
-                          This will replace this message and remove all later messages in the chat.
-                        </p>
+                        ) : null}
                       </div>
-                    ) : message.role === "assistant" ? (
-                      <Streamdown>{message.content}</Streamdown>
-                    ) : (
-                      <div className="whitespace-pre-wrap">{message.content}</div>
-                    )}
-                  </div>
-
-                  {message.citations?.length ? (
-                    <div className="mt-5">
-                      <button
-                        className="flex items-center gap-2 rounded-2xl border border-[#d8e4dc] bg-white px-3 py-2 text-sm font-medium text-[#2f6d57] transition hover:bg-[#f5fbf8]"
-                        onClick={() => toggleCitations(message.id)}
-                        type="button"
-                      >
-                        {expandedCitationIds.has(message.id) ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                        <Quote className="h-4 w-4" />
-                        {message.citations.length} citation
-                        {message.citations.length > 1 ? "s" : ""}
-                      </button>
-
-                      {expandedCitationIds.has(message.id) ? (
-                        <div className="mt-3 grid gap-3">
-                          {message.citations.map((citation, index) => (
-                            <div
-                              key={`${message.id}-${index}`}
-                              className="rounded-3xl border border-[#d8e4dc] bg-white px-4 py-4 shadow-sm"
-                            >
-                              <div className="mb-2 flex items-center gap-2 text-[#2f6d57]">
-                                <Quote className="h-4 w-4" />
-                                <span className="text-sm font-medium">
-                                  {citation.citation_label}
-                                </span>
-                              </div>
-                              <p className="text-sm leading-7 text-black/70">
-                                {citation.quote}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
                     </div>
-                  ) : null}
+
+                    <div className={markdownClassName(message.role)}>
+                      {message.role === "user" &&
+                      editingMessageId === message.id ? (
+                        <div className="space-y-3">
+                          <Textarea
+                            value={editDraft}
+                            onChange={(event) =>
+                              setEditDraft(event.target.value)
+                            }
+                            className="min-h-[96px] rounded-2xl border border-black/10 bg-white px-3 py-3 text-[15px] shadow-none sm:px-4"
+                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              className="h-9 rounded-2xl px-4"
+                              onClick={() => handleSubmitEdit(message.id)}
+                              type="button"
+                              loading={
+                                mutation.isPending &&
+                                sendingMessageId === message.id
+                              }
+                              disabled={
+                                !editDraft.trim() || mutation.isPending
+                              }
+                            >
+                              {sendingMessageId === message.id
+                                ? "Sending..."
+                                : "Send Edit"}
+                            </Button>
+                            <Button
+                              className="h-9 rounded-2xl px-4"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingMessageId(null);
+                                setEditDraft("");
+                              }}
+                              type="button"
+                              disabled={mutation.isPending}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                          <p className="text-xs text-black/50">
+                            This will replace this message and remove all later
+                            messages in the chat.
+                          </p>
+                        </div>
+                      ) : message.role === "assistant" ? (
+                        message.content === "Thinking..." ? (
+                          <div className="flex items-center gap-2 text-black/55">
+                            <Spinner size="sm" className="text-[#2f6d57]" />
+                            <span>Thinking...</span>
+                          </div>
+                        ) : (
+                          <Streamdown>{message.content}</Streamdown>
+                        )
+                      ) : (
+                        <div className="whitespace-pre-wrap break-words">
+                          {message.content}
+                        </div>
+                      )}
+                    </div>
+
+                    {message.citations?.length ? (
+                      <div className="mt-4 sm:mt-5">
+                        <button
+                          className="flex items-center gap-2 rounded-2xl border border-[#d8e4dc] bg-white px-3 py-2 text-sm font-medium text-[#2f6d57] transition hover:bg-[#f5fbf8]"
+                          onClick={() => toggleCitations(message.id)}
+                          type="button"
+                        >
+                          {expandedCitationIds.has(message.id) ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                          <Quote className="h-4 w-4" />
+                          {message.citations.length} citation
+                          {message.citations.length > 1 ? "s" : ""}
+                        </button>
+
+                        {expandedCitationIds.has(message.id) ? (
+                          <div className="mt-3 grid gap-3">
+                            {message.citations.map((citation, index) => (
+                              <div
+                                key={`${message.id}-${index}`}
+                                className="rounded-2xl border border-[#d8e4dc] bg-white px-3 py-3 shadow-sm sm:rounded-3xl sm:px-4 sm:py-4"
+                              >
+                                <div className="mb-2 flex items-center gap-2 text-[#2f6d57]">
+                                  <Quote className="h-4 w-4 shrink-0" />
+                                  <span className="text-sm font-medium">
+                                    {citation.citation_label}
+                                  </span>
+                                </div>
+                                <p className="text-sm leading-6 text-black/70 sm:leading-7">
+                                  {citation.quote}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </article>
               ))}
@@ -767,9 +982,9 @@ export function ChatPanel({ user }: { user: User }) {
           )}
         </div>
 
-        <div className="border-t border-black/8 bg-white px-4 py-4 md:px-8">
+        <div className="border-t border-black/8 bg-white px-3 py-3 sm:px-4 sm:py-4 md:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
-            <div className="rounded-[30px] border border-black/10 bg-white shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
+            <div className="rounded-2xl border border-black/10 bg-white shadow-[0_16px_48px_rgba(0,0,0,0.08)] sm:rounded-[30px]">
               <Textarea
                 placeholder={
                   selectedFolderId
@@ -779,16 +994,16 @@ export function ChatPanel({ user }: { user: User }) {
                 value={question}
                 disabled={!selectedFolderId || mutation.isPending}
                 onChange={(event) => setQuestion(event.target.value)}
-                className="min-h-[100px] resize-none border-0 bg-transparent px-5 py-4 text-[15px] shadow-none focus:border-0"
+                className="min-h-[50px] resize-none border-0 bg-transparent px-3 py-3 text-[15px] shadow-none focus:border-0 sm:min-h-[60px] sm:px-5 sm:py-4"
               />
-              <div className="flex items-center justify-between border-t border-black/6 px-4 py-3">
-                <p className="text-xs text-black/45">
+              <div className="flex items-center justify-between gap-3 border-t border-black/6 px-1 py-1 sm:px-2 sm:py-2">
+                <p className="min-w-0 flex-1 truncate text-[11px] text-black/45 sm:text-xs">
                   {selectedDocument
                     ? `Scoped to ${selectedDocument.original_filename}`
-                    : "Answers are grounded in indexed PDF chunks. Citations stay hidden until opened."}
+                    : "Answers are grounded in indexed PDF chunks."}
                 </p>
                 <Button
-                  className="h-11 w-11 rounded-2xl p-0"
+                  className="h-7 w-7 shrink-0 rounded-2xl p-0 sm:h-8 sm:w-8"
                   disabled={
                     !selectedFolderId ||
                     !question.trim() ||
@@ -796,8 +1011,13 @@ export function ChatPanel({ user }: { user: User }) {
                   }
                   onClick={handleSendNewMessage}
                   type="button"
+                  aria-label={mutation.isPending ? "Sending" : "Send message"}
                 >
-                  <ArrowUp className="h-4 w-4" />
+                  {mutation.isPending && sendingMessageId === "composer" ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <ArrowUp className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -805,15 +1025,77 @@ export function ChatPanel({ user }: { user: User }) {
         </div>
       </div>
 
-      <aside className="flex min-h-0 flex-col border-l border-black/8 bg-white">
-        <div className="border-b border-black/8 px-5 py-5">
-          <p className="text-xs uppercase tracking-[0.28em] text-black/45">
-            Chat History
+      {historyOpen ? (
+        <button
+          className="fixed inset-0 z-40 bg-black/35 xl:hidden"
+          onClick={() => setHistoryOpen(false)}
+          type="button"
+          aria-label="Close chat history"
+        />
+      ) : null}
+
+      {/* Desktop collapsed rail — always visible expand control */}
+      {historyCollapsed ? (
+        <div className="hidden h-full w-12 shrink-0 flex-col items-center border-l border-black/8 bg-white py-3 xl:flex">
+          <button
+            className="flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-xl border border-black/10 bg-[#f7f7f8] text-black/70 shadow-sm transition hover:border-[#171717] hover:bg-[#171717] hover:text-white"
+            onClick={() => setHistoryCollapsed(false)}
+            type="button"
+            aria-label="Expand recent conversations"
+            title="Show recent conversations"
+          >
+            <History className="h-4 w-4" />
+          </button>
+          <p
+            className="mt-4 select-none text-[10px] font-medium uppercase tracking-[0.2em] text-black/40"
+            style={{ writingMode: "vertical-rl" }}
+          >
+            History
           </p>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-ink">
-              Recent conversations
-            </h3>
+        </div>
+      ) : null}
+
+      <aside
+        className={cn(
+          "fixed inset-y-0 right-0 z-50 flex w-full max-w-[300px] flex-col border-l border-black/8 bg-white shadow-[-12px_0_40px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out xl:static xl:z-auto xl:max-w-none xl:shrink-0 xl:shadow-none",
+          historyOpen ? "translate-x-0" : "translate-x-full",
+          historyCollapsed
+            ? "xl:pointer-events-none xl:absolute xl:w-0 xl:translate-x-0 xl:overflow-hidden xl:border-l-0 xl:opacity-0"
+            : "xl:relative xl:w-[300px] xl:translate-x-0 xl:overflow-hidden xl:opacity-100",
+        )}
+        aria-hidden={historyCollapsed || undefined}
+      >
+        <div className="w-full min-w-[min(100%,300px)] border-b border-black/8 px-4 py-4 sm:px-5 sm:py-5 xl:min-w-[300px]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.28em] text-black/45 sm:text-xs">
+                Chat History
+              </p>
+              <h3 className="mt-1.5 text-base font-semibold text-ink sm:mt-2 sm:text-lg">
+                Recent conversations
+              </h3>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                className="hidden h-8 w-8 items-center justify-center rounded-lg text-black/45 transition hover:bg-black/5 hover:text-ink xl:inline-flex"
+                onClick={() => setHistoryCollapsed(true)}
+                type="button"
+                aria-label="Collapse recent conversations"
+                title="Collapse"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-black/45 transition hover:bg-black/5 hover:text-ink xl:hidden"
+                onClick={() => setHistoryOpen(false)}
+                type="button"
+                aria-label="Close chat history"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button
               className="h-9 rounded-lg border border-[#f3c5c5] px-3 text-xs text-[#b42318] hover:bg-[#fff5f5]"
               variant="ghost"
@@ -829,61 +1111,76 @@ export function ChatPanel({ user }: { user: User }) {
               Clear all
             </Button>
           </div>
-          <p className="mt-2 text-sm text-black/55">
-            Conversations are still grouped by folder, while the active ask can
-            be scoped to one PDF.
+          <p className="mt-2 hidden text-sm text-black/55 sm:block">
+            Conversations are grouped by folder; the active ask can be scoped to
+            one PDF.
           </p>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">
           <div className="space-y-3">
-            {visibleConversations.map((conversation: Conversation) => (
-              <div
-                key={conversation.id}
-                className={cn(
-                  "group flex w-full items-start gap-2 rounded-3xl border px-4 py-4 text-left transition",
-                  selectedConversationId === conversation.id
-                    ? "border-[#171717] bg-[#171717] text-white"
-                    : "border-black/8 bg-[#f7f7f8] text-ink hover:border-black/12 hover:bg-white",
-                )}
-              >
-                <button
-                  className="min-w-0 flex-1 text-left"
-                  onClick={() => setSelectedConversationId(conversation.id)}
-                  type="button"
-                >
-                  <p className="line-clamp-2 text-sm font-medium">
-                    {conversation.title}
-                  </p>
-                  {conversation.summary ? (
-                    <p className="mt-2 line-clamp-2 text-xs opacity-70">
-                      {conversation.summary}
-                    </p>
-                  ) : null}
-                  <p className="mt-3 text-xs opacity-60">
-                    {formatTime(conversation.last_message_at)}
-                  </p>
-                </button>
-                <button
-                  className={cn(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition",
-                    selectedConversationId === conversation.id
-                      ? "text-white/70 hover:bg-white/12 hover:text-white"
-                      : "text-black/35 hover:bg-[#fff5f5] hover:text-[#b42318]",
-                  )}
-                  onClick={() => handleDeleteConversation(conversation)}
-                  type="button"
-                  disabled={deleteConversationMutation.isPending}
-                  title="Delete conversation"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
+            {conversationsQuery.isLoading ? (
+              <ConversationListSkeleton />
+            ) : null}
+
+            {!conversationsQuery.isLoading
+              ? visibleConversations.map((conversation: Conversation) => (
+                  <div
+                    key={conversation.id}
+                    className={cn(
+                      "group flex w-full items-start gap-2 rounded-2xl border px-3 py-3 text-left transition sm:rounded-3xl sm:px-4 sm:py-4",
+                      selectedConversationId === conversation.id
+                        ? "border-[#171717] bg-[#171717] text-white"
+                        : "border-black/8 bg-[#f7f7f8] text-ink hover:border-black/12 hover:bg-white",
+                    )}
+                  >
+                    <button
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => {
+                        setSelectedConversationId(conversation.id);
+                        setHistoryOpen(false);
+                      }}
+                      type="button"
+                    >
+                      <p className="line-clamp-2 text-sm font-medium">
+                        {conversation.title}
+                      </p>
+                      {conversation.summary ? (
+                        <p className="mt-2 line-clamp-2 text-xs opacity-70">
+                          {conversation.summary}
+                        </p>
+                      ) : null}
+                      <p className="mt-3 text-xs opacity-60">
+                        {formatTime(conversation.last_message_at)}
+                      </p>
+                    </button>
+                    <button
+                      className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition",
+                        selectedConversationId === conversation.id
+                          ? "text-white/70 hover:bg-white/12 hover:text-white"
+                          : "text-black/35 hover:bg-[#fff5f5] hover:text-[#b42318]",
+                      )}
+                      onClick={() => handleDeleteConversation(conversation)}
+                      type="button"
+                      disabled={deleteConversationMutation.isPending}
+                      title="Delete conversation"
+                    >
+                      {deleteConversationMutation.isPending &&
+                      confirmationState?.kind === "single" &&
+                      confirmationState.conversation.id === conversation.id ? (
+                        <Spinner size="sm" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                ))
+              : null}
 
             {!conversationsQuery.isLoading &&
             visibleConversations.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-black/10 bg-[#f7f7f8] px-4 py-5 text-sm text-black/55">
+              <div className="rounded-2xl border border-dashed border-black/10 bg-[#f7f7f8] px-4 py-5 text-sm text-black/55 sm:rounded-3xl">
                 No conversations yet for this folder.
               </div>
             ) : null}
@@ -893,3 +1190,4 @@ export function ChatPanel({ user }: { user: User }) {
     </section>
   );
 }
+

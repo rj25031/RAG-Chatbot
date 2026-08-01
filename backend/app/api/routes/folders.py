@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -114,7 +115,11 @@ def create_folder(
         parent_folder_id=payload.parent_folder_id,
     )
     db.add(folder)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A folder with this name already exists here") from exc
     db.refresh(folder)
     return folder
 
@@ -147,7 +152,11 @@ def update_folder(
 
     folder.name = name
     folder.description = payload.description.strip() if payload.description else None
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A folder with this name already exists here") from exc
     db.refresh(folder)
     return folder
 
