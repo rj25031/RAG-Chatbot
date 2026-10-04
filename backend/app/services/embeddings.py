@@ -6,13 +6,14 @@ from openai import OpenAI
 
 from app.core.config import settings
 
-# Cohere OpenAI-compatible embeddings typically accept batches of up to ~96 texts.
+# OpenRouter exposes an OpenAI-compatible embeddings endpoint. Keep batches modest
+# so provider-side request size limits are respected.
 EMBED_BATCH_SIZE = 96
 
 
 @lru_cache(maxsize=1)
 def get_embedding_model() -> OpenAI:
-    return OpenAI(base_url=settings.cohere_base_url, api_key=settings.cohere_api_key)
+    return OpenAI(base_url=settings.open_router_base_url, api_key=settings.open_router_api_key)
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
@@ -38,3 +39,9 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         )
 
     return embeddings
+
+
+def get_model_embedding_dimension() -> int:
+    """Probe the embedding model once to learn the size of the vectors it returns."""
+    vectors = embed_texts(["embedding dimension probe"])
+    return len(vectors[0])
