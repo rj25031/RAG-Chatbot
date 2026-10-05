@@ -5,17 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, FileText, FolderTree, Quote } from "lucide-react";
 
 import { fetchDocumentDetail } from "@/lib/api";
+import { formatBytes, formatDate } from "@/lib/format";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SectionLabel } from "@/components/ui/section-label";
 import { DocumentDetailSkeleton } from "@/components/ui/loader";
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString();
-}
 
 export function DocumentDetailView({ documentId }: { documentId: number }) {
   const documentQuery = useQuery({
@@ -57,9 +50,7 @@ export function DocumentDetailView({ documentId }: { documentId: number }) {
         </Link>
         <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.28em] text-black/45 sm:text-xs">
-              Document Detail
-            </p>
+            <SectionLabel>Document Detail</SectionLabel>
             <h3 className="mt-2 break-words text-xl font-semibold text-ink sm:text-2xl">
               {document.original_filename}
             </h3>
@@ -82,9 +73,7 @@ export function DocumentDetailView({ documentId }: { documentId: number }) {
       <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)] lg:overflow-hidden">
         <aside className="overflow-y-auto rounded-2xl border border-black/8 bg-white p-4 sm:rounded-[28px] sm:p-5 lg:min-h-0">
           <div className="mb-4 sm:mb-6">
-            <p className="text-[10px] uppercase tracking-[0.28em] text-black/45 sm:text-xs">
-              Metadata
-            </p>
+            <SectionLabel>Metadata</SectionLabel>
             <div className="mt-3 space-y-3 text-sm text-black/65 sm:mt-4 sm:space-y-4">
               <div className="rounded-2xl bg-[#f7f7f8] p-3 sm:rounded-3xl sm:p-4">
                 <p className="mb-1 text-xs uppercase tracking-[0.18em] text-black/40">
@@ -132,9 +121,7 @@ export function DocumentDetailView({ documentId }: { documentId: number }) {
               <FileText className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.28em] text-black/45 sm:text-xs">
-                Source Citations
-              </p>
+              <SectionLabel>Source Citations</SectionLabel>
               <h4 className="text-base font-semibold text-ink sm:text-lg">
                 Page references, indexed snippets, and retrieval-ready content
               </h4>
@@ -166,9 +153,9 @@ export function DocumentDetailView({ documentId }: { documentId: number }) {
             ))}
 
             {document.citations.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-black/10 px-4 py-5 text-sm text-black/55 sm:rounded-3xl sm:px-5 sm:py-6">
+              <EmptyState>
                 No indexed snippets are available for this document yet.
-              </div>
+              </EmptyState>
             ) : null}
           </div>
         </div>

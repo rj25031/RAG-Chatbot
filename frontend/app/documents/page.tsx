@@ -1,8 +1,8 @@
 "use client";
 
-import { useAuthedUser } from "@/components/auth-guard";
-import { AppShell } from "@/components/app-shell";
-import { DocumentsWorkspace } from "@/components/documents-workspace";
+import { useAuthedUser } from "@/components/auth/auth-guard";
+import { AppShell } from "@/components/layout/app-shell";
+import { DocumentsWorkspace } from "@/components/features/documents-workspace";
 import { PageLoader } from "@/components/ui/loader";
 
 export default function DocumentsPage() {

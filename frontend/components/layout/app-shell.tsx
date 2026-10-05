@@ -24,6 +24,7 @@ import {
 import type { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SectionLabel } from "@/components/ui/section-label";
 
 const links = [
   { href: "/documents", label: "Documents", icon: FileText },
@@ -52,6 +53,8 @@ function pageTitleForPath(pathname: string) {
 
 export function AppShell({
   children,
+  title,
+  subtitle,
 }: {
   children: ReactNode;
   title?: string;
@@ -236,6 +239,18 @@ export function AppShell({
             <p className="truncate text-[11px] text-black/45">RAG Chatbot</p>
           </div>
         </header>
+
+        {title ? (
+          <div className="shrink-0 border-b border-black/8 bg-white/90 px-3 py-2.5 backdrop-blur-sm sm:px-4 sm:py-3">
+            <div className="min-w-0">
+              <SectionLabel>{pageTitle}</SectionLabel>
+              <h3 className="mt-1 text-lg font-semibold text-ink sm:text-xl">{title}</h3>
+              {subtitle ? (
+                <p className="mt-1 text-sm leading-5 text-black/55 sm:leading-6">{subtitle}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {children}

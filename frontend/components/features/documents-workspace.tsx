@@ -32,6 +32,7 @@ import {
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatBytes, formatDate } from "@/lib/format";
 import {
   DocumentListSkeleton,
   FolderTreeSkeleton,
@@ -40,16 +41,6 @@ import {
 } from "@/components/ui/loader";
 import type { DocumentItem, FolderNode, User } from "@/types";
 import { cn } from "@/lib/utils";
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString();
-}
 
 function flattenFolders(nodes: FolderNode[]): FolderNode[] {
   return nodes.flatMap((node) => [node, ...flattenFolders(node.children)]);

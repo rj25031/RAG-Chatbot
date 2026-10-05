@@ -1,8 +1,8 @@
 "use client";
 
-import { useAuthedUser } from "@/components/auth-guard";
-import { AppShell } from "@/components/app-shell";
-import { ChatPanel } from "@/components/chat-panel";
+import { useAuthedUser } from "@/components/auth/auth-guard";
+import { AppShell } from "@/components/layout/app-shell";
+import { ChatPanel } from "@/components/features/chat-panel";
 import { PageLoader } from "@/components/ui/loader";
 
 export default function ChatPage() {

@@ -2,9 +2,9 @@
 
 import { useParams } from "next/navigation";
 
-import { useAuthedUser } from "@/components/auth-guard";
-import { AppShell } from "@/components/app-shell";
-import { DocumentDetailView } from "@/components/document-detail-view";
+import { useAuthedUser } from "@/components/auth/auth-guard";
+import { AppShell } from "@/components/layout/app-shell";
+import { DocumentDetailView } from "@/components/features/document-detail-view";
 import { PageLoader } from "@/components/ui/loader";
 
 export default function DocumentDetailPage() {

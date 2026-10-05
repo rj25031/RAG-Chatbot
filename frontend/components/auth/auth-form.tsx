@@ -50,7 +50,7 @@ export function AuthForm({
       toast.success(mode === "register" ? "Account created successfully." : "Logged in successfully.");
       saveAccessToken(access_token);
       saveCurrentUser(user);
-      router.push("/folders");
+      router.push("/");
     },
     onError: (mutationError) => {
       toast.error(mutationError.message);

@@ -28,7 +28,7 @@ The app lets a user:
 flowchart LR
     A["Next.js Frontend"] --> B["FastAPI API"]
     B --> C["PostgreSQL + pgvector"]
-    B --> D["Cohere Embeddings"]
+    B --> D["OpenRouter Embeddings"]
     B --> E["Groq API"]
     B --> F["uploads/ PDF Storage"]
 ```
@@ -293,9 +293,9 @@ JWT_SECRET_KEY=change_me_to_a_long_random_secret
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 GROQ_MODEL=openai/gpt-oss-20b
-EMBEDDING_MODEL=embed-multilingual-v3.0
-COHERE_API_KEY=your_cohere_api_key
-COHERE_BASE_URL=https://api.cohere.com/compatibility/v1
+MODEL_NAME=nvidia/nemotron-3-embed-1b:free
+OPEN_ROUTER_API_KEY=your_open_router_api_key
+OPEN_ROUTER_BASE_URL=https://openrouter.ai/api/v1
 UPLOAD_DIR=../uploads
 CORS_ORIGINS=http://localhost:3000
 MAX_UPLOAD_BYTES=26214400
@@ -380,7 +380,7 @@ For Docker Compose, the backend database host is `postgres`, not `localhost`. Th
 
 `NEXT_PUBLIC_API_BASE_URL` is baked into the frontend **at image build time** via Docker build args (not runtime env). Change it under `frontend.build.args` in `docker-compose.yml` and rebuild when the API URL changes.
 
-Backend `.env` must include `COHERE_API_KEY` and `COHERE_BASE_URL` for embeddings.
+Backend `.env` must include `OPEN_ROUTER_API_KEY` (and optionally `OPEN_ROUTER_BASE_URL`) for embeddings. The embedding model is set via `MODEL_NAME` and must match the vector dimension stored in the database.
 
 ## 11. Important API Endpoints
 

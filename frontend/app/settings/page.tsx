@@ -14,9 +14,11 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
-import { useAuthedUser } from "@/components/auth-guard";
-import { AppShell } from "@/components/app-shell";
+import { useAuthedUser } from "@/components/auth/auth-guard";
+import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { CardHeader } from "@/components/ui/card-header";
 import { Input } from "@/components/ui/input";
 import {
   fetchGroqModels,
@@ -167,19 +169,12 @@ export default function SettingsPage() {
               className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:rounded-[32px] sm:p-6"
               onSubmit={handleProfileSubmit}
             >
-              <div className="mb-4 flex items-start gap-3 sm:mb-6 sm:items-center">
-                <div className="shrink-0 rounded-2xl bg-[#d8e4dc] p-2.5 text-[#173d31]">
-                  <UserCircle2 className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-semibold text-ink sm:text-lg">
-                    Profile
-                  </h3>
-                  <p className="text-sm text-black/55">
-                    Update how your account appears across the workspace.
-                  </p>
-                </div>
-              </div>
+              <CardHeader
+                icon={<UserCircle2 className="h-5 w-5" />}
+                className="sm:mb-6"
+                title="Profile"
+                description="Update how your account appears across the workspace."
+              />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -223,19 +218,13 @@ export default function SettingsPage() {
               className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:rounded-[32px] sm:p-6"
               onSubmit={handlePasswordSubmit}
             >
-              <div className="mb-4 flex items-start gap-3 sm:mb-6 sm:items-center">
-                <div className="shrink-0 rounded-2xl bg-[#efe4d6] p-2.5 text-[#8a4b14]">
-                  <KeyRound className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-semibold text-ink sm:text-lg">
-                    Password
-                  </h3>
-                  <p className="text-sm text-black/55">
-                    Change your password without leaving the workspace.
-                  </p>
-                </div>
-              </div>
+              <CardHeader
+                icon={<KeyRound className="h-5 w-5" />}
+                iconClassName="bg-[#efe4d6] text-[#8a4b14]"
+                className="sm:mb-6"
+                title="Password"
+                description="Change your password without leaving the workspace."
+              />
 
               <div className="grid gap-4">
                 <Input
@@ -282,20 +271,14 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-4 sm:space-y-5">
-            <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:rounded-[32px] sm:p-6">
-              <div className="mb-4 flex items-start gap-3 sm:mb-6 sm:items-center">
-                <div className="shrink-0 rounded-2xl bg-[#171717] p-2.5 text-white">
-                  <Bot className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-semibold text-ink sm:text-lg">
-                    Model selection
-                  </h3>
-                  <p className="text-sm text-black/55">
-                    Choose the Groq model your chat requests should use.
-                  </p>
-                </div>
-              </div>
+            <Card>
+              <CardHeader
+                icon={<Bot className="h-5 w-5" />}
+                iconClassName="bg-[#171717] text-white"
+                className="sm:mb-6"
+                title="Model selection"
+                description="Choose the Groq model your chat requests should use."
+              />
 
               <div className="rounded-2xl border border-black/8 bg-[#f7f7f8] p-3 sm:rounded-3xl sm:p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-black/40">
@@ -371,22 +354,15 @@ export default function SettingsPage() {
                   Save Chat Model
                 </Button>
               </div>
-            </div>
+            </Card>
 
-            <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:rounded-[32px] sm:p-6">
-              <div className="mb-4 flex items-start gap-3 sm:items-center">
-                <div className="shrink-0 rounded-2xl bg-[#171717] p-2.5 text-white">
-                  <LogOut className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-semibold text-ink sm:text-lg">
-                    Session
-                  </h3>
-                  <p className="text-sm text-black/55">
-                    Clear the current local session and model preference.
-                  </p>
-                </div>
-              </div>
+            <Card>
+              <CardHeader
+                icon={<LogOut className="h-5 w-5" />}
+                iconClassName="bg-[#171717] text-white"
+                title="Session"
+                description="Clear the current local session and model preference."
+              />
 
               <Button
                 className="w-full justify-center gap-2 rounded-2xl"
@@ -400,7 +376,7 @@ export default function SettingsPage() {
                 <LogOut className="h-4 w-4" />
                 Logout
               </Button>
-            </div>
+            </Card>
 
             <div className="rounded-2xl border border-[#d8e4dc] bg-[#f5fbf8] p-4 text-sm leading-6 text-[#173d31] sm:rounded-[32px] sm:p-6 sm:leading-7">
               Model choices are fetched live from Groq and your selected model
